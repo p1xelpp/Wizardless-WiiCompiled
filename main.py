@@ -3,17 +3,20 @@ from pathlib import Path
 import subprocess
 import sys
 
-import pycurl
-from PySide6.QtCore import QObject, QThread, Signal, Slot
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QMainWindow,
-    QPushButton,
-    QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+try:
+    import pycurl
+    from PySide6.QtCore import QObject, QThread, Signal, Slot
+    from PySide6.QtWidgets import (
+        QApplication,
+        QCheckBox,
+        QMainWindow,
+        QPushButton,
+        QPlainTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+except ImportError:
+    print("libs pycurl and pyside6 are not installed. installing them (press CTRL+C do stop download)")
 
 ROOT = Path(__file__).resolve().parent
 INSTALLER = ROOT / "WiiCompiled-Setup.exe"
