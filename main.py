@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import urllib.request
 
 try:
-    import pycurl
     from PySide6.QtCore import QObject, QThread, Signal, Slot
     from PySide6.QtWidgets import (
         QApplication,
@@ -16,7 +16,8 @@ try:
         QWidget,
     )
 except ImportError:
-    print("libs pycurl and pyside6 are not installed. installing them (press CTRL+C do stop download)")
+    print("PySide6 not installed, installing PySide6")
+    os.system("pip install PySide6")
 
 ROOT = Path(__file__).resolve().parent
 INSTALLER = ROOT / "WiiCompiled-Setup.exe"
@@ -26,15 +27,22 @@ OUTPUT_DIR = ROOT / "WiiCompiled"
 def get_wii_compiled_installer(log):
     log("Downloading WiiCompiled-Setup.exe...")
     url = "https://github.com/patchzyy/Wiicompiled/releases/download/v0.2.32/WiiCompiled-Setup.exe"
-    with INSTALLER.open("wb") as installer_file:
-        curl = pycurl.Curl()
-        try:
-            curl.setopt(pycurl.URL, url)
-            curl.setopt(pycurl.WRITEDATA, installer_file)
-            curl.perform()
-        finally:
-            curl.close()
-    log("Download complete.")
+    
+    try:
+        # Voeg een User-Agent toe zodat GitHub de verbinding niet weigert
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')]
+        urllib.request.install_opener(opener)
+        
+        # Download het bestand rechtstreeks naar de doellocatie
+        urllib.request.urlretrieve(url, str(INSTALLER))
+        log("Download compleet.")
+    except Exception as e:
+        log(f"Download mislukt: {e}")
+        # Verwijder het bestand als het gedeeltelijk is aangemaakt om fouten te voorkomen
+        if INSTALLER.is_file():
+            INSTALLER.unlink()
+        raise e
 
 def run_wii_compiled(log):
     if not ISO.is_file():
@@ -42,10 +50,14 @@ def run_wii_compiled(log):
             "MarioKart.iso was not found. Place it beside this script and try again."
         )
 
-    if not INSTALLER.is_file():
-        get_wii_compiled_installer(log)
+    # Controleer of het bestand bestaat EN groter is dan 5 MB (voorkomt WinError 193 door corrupte downloads)
+    if INSTALLER.is_file() and INSTALLER.stat().st_size > 5 * 1024 * 1024:
+        log("WiiCompiled-Setup.exe reeds aanwezig en correct van formaat. Download overgeslagen.")
     else:
-        log("WiiCompiled-Setup.exe already exists. Skipping download.")
+        if INSTALLER.is_file():
+            log("WiiCompiled-Setup.exe is incompleet of beschadigd. Wordt opnieuw gedownload...")
+            INSTALLER.unlink()
+        get_wii_compiled_installer(log)
 
     command = [
         str(INSTALLER),
